@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CarePro - Trusted Childcare Booking</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -21,7 +23,8 @@
             <h1>Find Your Perfect Babysitter</h1>
             <p>Connect with trusted caregivers in your area. Browse profiles, read real reviews, and book with confidence.</p>
         </div>
-
+<!-- Map Section -->
+<div id="map-container" style="width: 100%; height: 500px; border-radius: 12px; margin: 40px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
         <!-- Main CTA Grid -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin: 60px 0;">
             <div class="feature-card">
@@ -129,5 +132,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', checkPersistentLogin);
     </script>
+    <script src="map-init.js"></script>
 </body>
 </html>
