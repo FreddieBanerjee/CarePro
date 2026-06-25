@@ -89,7 +89,7 @@ async function handleGoogleOAuthCallback() {
     try {
         // Exchange code for tokens via backend
         const userId = localStorage.getItem('googleAuthUserId');
-        const response = await fetch('/.netlify/functions/google-calendar-auth', {
+            const response = await fetch('/api/google-calendar-auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
