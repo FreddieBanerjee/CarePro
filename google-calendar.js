@@ -533,5 +533,9 @@ document.addEventListener('DOMContentLoaded', function() {
         handleGoogleOAuthCallback();
     }
 });
-
+function escapeHTML(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 console.log('Google Calendar integration loaded');
