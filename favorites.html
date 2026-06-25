@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favorite Babysitters - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="parent-search.html" class="btn-large">Browse Babysitters</a>
+            <a href="dashboard.html" class="btn-large">My Bookings</a>
+            <a href="user-profile.html" class="btn-large">My Profile</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>⭐ Your Favorite Babysitters</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 30px;">Quick access to your bookmarked babysitters</p>
+        
+        <div id="favoritesContainer" class="babysitters-list">
+            <p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Loading favorites...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script src="enhanced-features.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('Please login to view favorites');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (currentUser.role !== 'parent') {
+                alert('Only parents can view favorites');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            await loadFavoriteBabysitters();
+        });
+
+        async function loadFavoriteBabysitters() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            
+            if (favorites.length === 0) {
+                document.getElementById('favoritesContainer').innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px 20px;">
+                        <p style="font-size: 48px; margin-bottom: 16px;">☆</p>
+                        <p style="color: var(--text-secondary); font-size: 16px; margin-bottom: 20px;">No favorite babysitters yet</p>
+                        <a href="parent-search.html" class="btn-large">Browse Babysitters</a>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                // Fetch all favorite babysitters data
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .in('id', favorites)
+                    .eq('role', 'babysitter');
+
+                if (error) {
+                    console.error('Error loading favorites:', error);
+                    document.getElementById('favoritesContainer').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Error loading favorites</p>';
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    document.getElementById('favoritesContainer').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">No favorite babysitters found</p>';
+                    return;
+                }
+
+                // Display favorites
+                const container = document.getElementById('favoritesContainer');
+                container.innerHTML = data.map(sitter => `
+                    <div class="babysitter-card" data-sitter-id="${sitter.id}">
+                        <div class="babysitter-avatar">${sitter.name.substring(0, 2).toUpperCase()}</div>
+                        <h3>${sitter.name}</h3>
+                        <p class="babysitter-location">${sitter.location || 'Location not specified'}</p>
+                        <div class="babysitter-rating">
+                            <span id="rating-${sitter.id}">4.5</span> ★ (<span id="count-${sitter.id}">0</span> reviews)
+                        </div>
+                        <p class="babysitter-rate">£${sitter.hourly_rate}/hour</p>
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button class="btn-large" onclick="viewBabysitterProfile('${sitter.id}')" style="flex: 1; padding: 10px; font-size: 13px;">View Profile</button>
+                            <button class="fav-btn" data-sitter-id="${sitter.id}" onclick="toggleFavoriteBabysitter('${sitter.id}')" style="flex: 0.3; background: white; border: 2px solid var(--primary); color: #fbbf24; padding: 10px; border-radius: 6px; font-size: 18px; cursor: pointer;">★</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Load ratings for each babysitter
+                data.forEach(sitter => loadBabysitterRating(sitter.id));
+            } catch (error) {
+                console.error('Exception loading favorites:', error);
+                document.getElementById('favoritesContainer').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Error loading favorites</p>';
+            }
+        }
+
+        function viewBabysitterProfile(babysitterId) {
+            window.location.href = `babysitter-profile.html?id=${babysitterId}`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-number { font-size: 32px; font-weight: 700; color: var(--primary); }
+        .stat-label { color: var(--text-secondary); font-size: 14px; margin-top: 5px; }
+        .admin-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .admin-table th { background: var(--primary); color: white; padding: 12px; text-align: left; }
+        .admin-table td { padding: 12px; border-bottom: 1px solid var(--neutral-border); }
+        .admin-table tr:hover { background: var(--neutral-light); }
+        .login-box { max-width: 400px; margin: 60px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .login-box h2 { color: var(--primary); margin-bottom: 30px; text-align: center; }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--neutral-border); border-radius: 4px; font-size: 14px; }
+        .login-box button { width: 100%; padding: 12px; margin-top: 20px; background: var(--primary); color: white; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; }
+        .login-box button:hover { background: var(--primary-light); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro Admin</h1>
+        <div>
+            <a href="index.html" class="btn-large">Home</a>
+            <button class="logout-btn" onclick="logoutAdmin()">Logout</button>
+        </div>
+    </nav>
+
+    <div id="adminLoginSection" class="login-box">
+        <h2>Admin Login</h2>
+        <input type="password" id="adminPassword" placeholder="Enter admin password">
+        <button onclick="loginAdmin()">Login</button>
+        <p style="text-align: center; color: var(--text-secondary); margin-top: 20px; font-size: 14px;"><a href="index.html" style="color: var(--primary); text-decoration: none;">Back to home</a></p>
+    </div>
+
+    <div id="adminDashboardSection" style="display: none;">
+        <div class="container">
+            <h2>Admin Dashboard</h2>
+            
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalUsers">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBabysitters">0</div>
+                    <div class="stat-label">Babysitters</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalParents">0</div>
+                    <div class="stat-label">Parents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBookings">0</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px;">
+                <h3 style="color: var(--primary); margin-bottom: 20px;">All Users</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Type</th>
+                            <th>Location/Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading users...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 40px;">
+                <h3 style="color: var(--primary); margin-bottom: 20px;">All Bookings</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Babysitter</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading bookings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminLoggedIn = localStorage.getItem('adminLoggedIn');
+            if (adminLoggedIn === 'true') {
+                showAdminDashboard();
+            }
+        });
+
+        function loginAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === 'ADMIN') {
+                localStorage.setItem('adminLoggedIn', 'true');
+                document.getElementById('adminLoginSection').style.display = 'none';
+                showAdminDashboard();
+            } else {
+                alert('Incorrect password');
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+
+        async function showAdminDashboard() {
+            document.getElementById('adminDashboardSection').style.display = 'block';
+            try {
+                const { data: users } = await supabaseClient.from('users').select('*');
+                const { data: bookings } = await supabaseClient.from('bookings').select('*');
+                
+                if (users) {
+                    const babysitters = users.filter(u => u.role === 'babysitter').length;
+                    const parents = users.filter(u => u.role === 'parent').length;
+                    document.getElementById('totalUsers').textContent = users.length;
+                    document.getElementById('totalBabysitters').textContent = babysitters;
+                    document.getElementById('totalParents').textContent = parents;
+                    document.getElementById('totalBookings').textContent = bookings ? bookings.length : 0;
+                    
+                    const usersHTML = users.map(user => `<tr><td><strong>${user.name}</strong></td><td>${user.email}</td><td>${user.role === 'babysitter' ? 'Babysitter' : 'Parent'}</td><td>${user.role === 'babysitter' ? '£' + user.hourly_rate + '/hr' : 'N/A'}</td></tr>`).join('');
+                    document.getElementById('usersTableBody').innerHTML = usersHTML || '<tr><td colspan="4" style="text-align: center;">No users</td></tr>';
+                }
+                
+                if (bookings) {
+                    const bookingsHTML = bookings.map(booking => `<tr><td>${booking.babysitter_name}</td><td>${booking.booking_date}</td><td>£${booking.total_price}</td><td><span style="background: var(--success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${booking.status}</span></td></tr>`).join('');
+                    document.getElementById('bookingsTableBody').innerHTML = bookingsHTML || '<tr><td colspan="4" style="text-align: center;">No bookings</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function logoutAdmin() {
+            localStorage.removeItem('adminLoggedIn');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

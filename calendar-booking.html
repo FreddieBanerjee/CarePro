@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Babysitter - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .week-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+            gap: 8px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--neutral-border);
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        .time-label {
+            font-weight: 600;
+            font-size: 12px;
+            padding: 10px 5px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        .day-header {
+            font-weight: 600;
+            text-align: center;
+            padding: 10px 5px;
+            border-bottom: 2px solid var(--primary);
+            font-size: 13px;
+        }
+        .hour-slot {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--neutral-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .hour-slot.available {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        .hour-slot.available:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .hour-slot.unavailable {
+            background: #f3f4f6;
+            color: var(--text-secondary);
+            border-color: var(--neutral-border);
+            cursor: not-allowed;
+        }
+        .hour-slot.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="parent-search.html" class="btn-large">Back to Search</a>
+            <a href="dashboard.html" class="btn-large">My Bookings</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); margin-bottom: 25px; color: #1e40af;">
+            <p style="margin: 0;">
+                💬 <strong>Can't find what you need?</strong> Message the babysitter to discuss availability or custom times.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <h2 id="babysitterName">Loading...</h2>
+            <p id="babysitterInfo" style="color: var(--text-secondary); margin: 10px 0 0 0;"></p>
+        </div>
+
+        <div style="max-width: 1000px;">
+            <h3>Click an available time to book</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">Green hours = available. Gray hours = unavailable.</p>
+            
+            <div class="week-grid" id="weekGrid"></div>
+
+            <div id="bookingSection" style="display: none; background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--neutral-border); margin-bottom: 30px;">
+                <h3>Confirm Your Booking</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <p style="color: var(--text-secondary); font-size: 12px; margin: 0 0 5px 0; font-weight: 600;">DATE</p>
+                        <p id="confirmDate" style="margin: 0; font-size: 16px; font-weight: 600;"></p>
+                    </div>
+                    <div>
+                        <p style="color: var(--text-secondary); font-size: 12px; margin: 0 0 5px 0; font-weight: 600;">TIME</p>
+                        <p id="confirmTime" style="margin: 0; font-size: 16px; font-weight: 600;"></p>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Duration (hours)</label>
+                        <input type="number" id="durationHours" min="1" max="12" value="2" style="width: 100%; padding: 10px; border: 1px solid var(--neutral-border); border-radius: 4px;" onchange="updatePrice()">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Hourly Rate</label>
+                        <p id="rateDisplay" style="margin: 0; padding: 10px; background: var(--neutral-light); border-radius: 4px; font-weight: 600;">£--</p>
+                    </div>
+                </div>
+
+                <div style="background: var(--neutral-light); padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                    <p style="color: var(--text-secondary); margin: 0 0 5px 0; font-size: 12px; font-weight: 600;">TOTAL PRICE</p>
+                    <p style="margin: 0; font-size: 28px; font-weight: 700; color: var(--primary);">£<span id="totalPrice">0</span></p>
+                </div>
+
+                <button class="btn-large" onclick="confirmBooking()" style="width: 100%; padding: 14px; background: var(--primary);">Confirm Booking</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script src="enhanced-features.js"></script>
+    <script>
+        const HOURS = Array.from({length: 16}, (_, i) => i + 8); // 8am to 11pm (8-23)
+        let selectedDate = null;
+        let selectedSlot = null;
+        let babysitterId = null;
+        let babysitterData = null;
+        let availabilityData = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'parent') {
+                alert('Only parents can book');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            babysitterId = parseInt(params.get('babysitterId'));
+
+            if (!babysitterId) {
+                alert('No babysitter selected');
+                window.location.href = 'parent-search.html';
+                return;
+            }
+
+            loadBabysitterInfo();
+            loadAvailability();
+        });
+
+        async function loadBabysitterInfo() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('id', babysitterId)
+                    .single();
+
+                if (error || !data) {
+                    alert('Babysitter not found');
+                    return;
+                }
+
+                babysitterData = data;
+                document.getElementById('babysitterName').textContent = data.name;
+                document.getElementById('babysitterInfo').textContent = `${data.location || 'Location TBD'} • £${data.hourly_rate}/hour`;
+                document.getElementById('rateDisplay').textContent = '£' + data.hourly_rate;
+            } catch (error) {
+                console.error('Error loading babysitter:', error);
+            }
+        }
+
+        async function loadAvailability() {
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const dates = [];
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() + i);
+                    dates.push(date.toISOString().split('T')[0]);
+                }
+
+                const { data, error } = await supabaseClient
+                    .from('availability')
+                    .select('*')
+                    .eq('babysitter_id', babysitterId)
+                    .in('available_date', dates);
+
+                if (error) {
+                    console.error('Error:', error);
+                    return;
+                }
+
+                if (data) {
+                    data.forEach(slot => {
+                        const key = `${slot.available_date}-${slot.hour_start}`;
+                        availabilityData[key] = {
+                            id: slot.id,
+                            isAvailable: slot.is_available,
+                            isBooked: slot.is_booked
+                        };
+                    });
+                }
+
+                renderCalendar();
+            } catch (error) {
+                console.error('Error loading availability:', error);
+            }
+        }
+
+        function renderCalendar() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const grid = document.getElementById('weekGrid');
+            grid.innerHTML = '';
+
+            // Time column header
+            grid.appendChild(createEl('div', 'time-label', ''));
+
+            // Day headers (7 days)
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNum = date.getDate();
+                grid.appendChild(createEl('div', 'day-header', `${dayName} ${dayNum}`));
+            }
+
+            // Hour rows
+            HOURS.forEach(hour => {
+                grid.appendChild(createEl('div', 'time-label', `${String(hour).padStart(2, '0')}:00`));
+
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const key = `${dateStr}-${hour}`;
+                    
+                    const slotData = availabilityData[key];
+                    const isAvailable = slotData && slotData.isAvailable && !slotData.isBooked;
+
+                    const slot = document.createElement('div');
+                    slot.className = `hour-slot ${isAvailable ? 'available' : 'unavailable'}`;
+                    slot.textContent = isAvailable ? '✓' : '';
+                    
+                    if (isAvailable) {
+                        slot.onclick = () => selectSlot(dateStr, hour, key, slot, slotData.id);
+                    }
+
+                    grid.appendChild(slot);
+                }
+            });
+        }
+
+        function selectSlot(dateStr, hour, key, element, slotId) {
+            // Remove previous selection
+            document.querySelectorAll('.hour-slot.selected').forEach(el => el.classList.remove('selected'));
+            
+            element.classList.add('selected');
+            
+            selectedDate = dateStr;
+            selectedSlot = {
+                date: dateStr,
+                hour: hour,
+                slotId: slotId
+            };
+
+            const d = new Date(dateStr + 'T00:00:00');
+            document.getElementById('confirmDate').textContent = 
+                d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            
+            const startTime = String(hour).padStart(2, '0') + ':00';
+            const endTime = String(hour + 1).padStart(2, '0') + ':00';
+            document.getElementById('confirmTime').textContent = `${startTime} - ${endTime}`;
+
+            updatePrice();
+            document.getElementById('bookingSection').style.display = 'block';
+        }
+
+        function updatePrice() {
+            const duration = parseInt(document.getElementById('durationHours').value) || 1;
+            const total = duration * babysitterData.hourly_rate;
+            document.getElementById('totalPrice').textContent = total;
+        }
+
+        async function confirmBooking() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const duration = parseInt(document.getElementById('durationHours').value) || 1;
+            const totalPrice = duration * babysitterData.hourly_rate;
+
+            if (!selectedSlot) {
+                alert('Please select a time slot');
+                return;
+            }
+
+            try {
+                const hour = selectedSlot.hour;
+                const startTime = String(hour).padStart(2, '0') + ':00';
+                const endTime = String(hour + duration).padStart(2, '0') + ':00';
+
+                // Insert booking
+                const { error: bookingError } = await supabaseClient
+                    .from('bookings')
+                    .insert([{
+                        parent_id: currentUser.id,
+                        babysitter_id: babysitterId,
+                        babysitter_name: babysitterData.name,
+                        booking_date: selectedSlot.date,
+                        start_time: startTime,
+                        end_time: endTime,
+                        children_count: 1,
+                        total_price: totalPrice,
+                        status: 'confirmed',
+                        created_at: new Date().toISOString()
+                    }]);
+
+                if (bookingError) {
+                    alert('Error creating booking: ' + bookingError.message);
+                    return;
+                }
+
+                // Mark slot as booked
+                const { error: updateError } = await supabaseClient
+                    .from('availability')
+                    .update({ is_booked: true })
+                    .eq('id', selectedSlot.slotId);
+
+                if (updateError) {
+                    console.error('Error marking slot as booked:', updateError);
+                }
+
+                alert('✓ Booking confirmed!');
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function createEl(tag, className, text) {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            if (text) el.textContent = text;
+            return el;
+        }
+    </script>
+</body>
+</html>

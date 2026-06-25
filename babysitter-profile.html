@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babysitter Profile - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <a href="parent-search.html" class="back-link">Back</a>
+    </nav>
+
+    <div class="container">
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="avatar" id="profileAvatar">--</div>
+                <div class="profile-info" style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h2 id="profileTitle" style="margin: 0;">Loading...</h2>
+                    </div>
+                    <p class="rating"><a href="#" id="reviewsLink" style="color: var(--primary); text-decoration: none;"><span id="profileRating">--</span> stars (<span id="reviewCount">0</span> reviews)</a></p>
+                </div>
+                <button id="favBtn" onclick="toggleFavorite()" style="background: white; border: 2px solid var(--primary); color: var(--primary); padding: 10px 15px; border-radius: 4px; font-size: 18px; cursor: pointer; transition: all 0.2s;">☆</button>
+            </div>
+
+            <div class="profile-section">
+                <h3>About</h3>
+                <p id="profileBio">Loading...</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 25px 0;">
+                <div class="profile-section">
+                    <h3>Location</h3>
+                    <p id="profileLocation">--</p>
+                </div>
+                <div class="profile-section">
+                    <h3>Experience</h3>
+                    <p id="profileExperience">--</p>
+                </div>
+            </div>
+
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); margin: 25px 0;">
+                <h3 style="margin-top: 0; color: var(--primary);">Emergency Contact</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <p style="color: var(--text-secondary); margin: 0 0 5px 0; font-size: 12px; font-weight: 600;">PHONE</p>
+                        <p id="profilePhone" style="margin: 0; font-size: 18px; font-weight: 600;">--</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--text-secondary); margin: 0 0 5px 0; font-size: 12px; font-weight: 600;">POSTCODE</p>
+                        <p id="profilePostcode" style="margin: 0; font-size: 18px; font-weight: 600;">--</p>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <p style="color: var(--text-secondary); margin: 0 0 5px 0; font-size: 12px; font-weight: 600;">ADDRESS</p>
+                    <p id="profileAddress" style="margin: 0;">--</p>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h3>Hourly Rate</h3>
+                <p class="price" id="profileRate">£--/hour</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+                <button class="btn-large" id="bookBtn" style="width: 100%; text-align: center; display: block; padding: 16px; background: var(--primary);">📅 Book with Calendar</button>
+                <button class="btn-large" id="favBtn" onclick="handleFavoriteClick()" style="width: 100%; text-align: center; display: block; padding: 16px; background: white; color: var(--primary); border: 2px solid var(--primary); font-size: 18px;">☆ Favorite</button>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn-large" id="msgBtn" onclick="handleMessageClick()" style="width: 100%; text-align: center; display: block; padding: 16px; background: var(--secondary);">💬 Message</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script src="enhanced-features.js"></script>
+    <script>
+        let selectedBabysitterId = null;
+        let selectedBabysitterData = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const params = new URLSearchParams(window.location.search);
+            const sitterId = params.get('id');
+
+            if (sitterId) {
+                selectedBabysitterId = sitterId;
+                selectedBabysitterData = await loadBabysitterProfile(sitterId);
+                
+                if (selectedBabysitterData) {
+                    // Set up reviews link with babysitter ID
+                    document.getElementById('reviewsLink').href = 'reviews.html?id=' + sitterId;
+
+                    // Set up book button
+                    document.getElementById('bookBtn').onclick = function() {
+                        window.location.href = `calendar-booking.html?babysitterId=${sitterId}`;
+                    };
+
+                    // Update favorite button state
+                    updateFavoriteButtonState(sitterId);
+                }
+            } else {
+                document.getElementById('profileTitle').textContent = 'Profile not found';
+            }
+        });
+
+        function handleFavoriteClick() {
+            if (selectedBabysitterId) {
+                toggleFavoriteBabysitter(selectedBabysitterId);
+                updateFavoriteButtonState(selectedBabysitterId);
+            }
+        }
+
+        function handleMessageClick() {
+            if (selectedBabysitterId) {
+                window.location.href = `messaging.html?recipientId=${selectedBabysitterId}`;
+            }
+        }
+
+        function updateFavoriteButtonState(babysitterId) {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const favBtn = document.getElementById('favBtn');
+            if (favorites.includes(babysitterId)) {
+                favBtn.innerHTML = '★ Favorited';
+                favBtn.style.background = '#fbbf24';
+                favBtn.style.color = 'white';
+                favBtn.style.borderColor = '#fbbf24';
+            } else {
+                favBtn.innerHTML = '☆ Favorite';
+                favBtn.style.background = 'white';
+                favBtn.style.color = 'var(--primary)';
+                favBtn.style.borderColor = 'var(--primary)';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reviews - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <a href="babysitter-profile.html" id="backLink" class="back-link">Back</a>
+    </nav>
+
+    <div class="container">
+        <h2 id="reviewTitle">Reviews</h2>
+        
+        <div class="review-form-section">
+            <h3>Leave a Review</h3>
+            <div class="review-form">
+                <div class="form-group">
+                    <label>Your Name:</label>
+                    <input type="text" id="reviewName" placeholder="Your name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Rating:</label>
+                    <select id="reviewRating" required>
+                        <option value="5">5 Stars ★★★★★</option>
+                        <option value="4">4 Stars ★★★★</option>
+                        <option value="3">3 Stars ★★★</option>
+                        <option value="2">2 Stars ★★</option>
+                        <option value="1">1 Star ★</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Review:</label>
+                    <textarea id="reviewText" placeholder="Write your review here..." rows="4" required></textarea>
+                </div>
+
+                <button class="btn-large" id="submitReviewBtn" style="width: 100%; padding: 14px;">Submit Review</button>
+            </div>
+        </div>
+
+        <div class="reviews-section">
+            <h3>All Reviews</h3>
+            <div id="reviewsList" class="reviews-list"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let babysitterId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            babysitterId = params.get('id');
+
+            if (babysitterId) {
+                // Load babysitter name for title
+                loadBabysitterName(babysitterId);
+                
+                // Set back link
+                document.getElementById('backLink').href = 'babysitter-profile.html?id=' + babysitterId;
+
+                // Set up review submission
+                document.getElementById('submitReviewBtn').onclick = () => submitReview(babysitterId);
+
+                // Load reviews
+                loadBabysitterReviews(babysitterId);
+            } else {
+                document.getElementById('reviewTitle').textContent = 'Reviews not found';
+            }
+        });
+
+        async function loadBabysitterName(babysitterId) {
+            try {
+                const { data } = await supabaseClient
+                    .from('users')
+                    .select('name')
+                    .eq('id', babysitterId)
+                    .single();
+
+                if (data) {
+                    document.getElementById('reviewTitle').textContent = 'Reviews for ' + data.name;
+                }
+            } catch (error) {
+                console.error('Error loading babysitter name:', error);
+            }
+        }
+    </script>
+</body>
+</html>

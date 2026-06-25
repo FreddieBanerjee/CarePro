@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Babysitter - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="parent-search.html" class="back-link">Back</a>
+            <a href="admin.html" class="btn-large" style="font-size: 12px; padding: 8px 14px; margin-left: 10px;">Admin</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Book a Babysitter</h2>
+        
+        <div class="booking-form">
+            <div id="selectedBabysitterInfo" style="background: var(--neutral-light); padding: 15px; border-radius: 8px; margin-bottom: 25px; border-left: 3px solid var(--primary);">
+                <p style="color: var(--text-secondary); margin: 0;"><strong>Babysitter:</strong> <span id="bookingBabysitterName">Select a babysitter</span></p>
+                <p style="color: var(--text-secondary); margin: 5px 0 0 0; font-size: 13px;"><strong>Rate:</strong> £<span id="hourlyRate">15</span>/hour</p>
+            </div>
+
+            <div class="form-group">
+                <label>Select Date:</label>
+                <input type="date" id="bookingDate" required>
+            </div>
+
+            <div class="form-group">
+                <label>Start Time:</label>
+                <input type="time" id="startTime" required>
+            </div>
+
+            <div class="form-group">
+                <label>End Time:</label>
+                <input type="time" id="endTime" required>
+            </div>
+
+            <div class="form-group">
+                <label>Number of Children:</label>
+                <input type="number" id="childrenCount" min="1" max="5" required>
+            </div>
+
+            <div class="form-group">
+                <label>Special Requests:</label>
+                <textarea id="specialRequests" placeholder="Any special requests?" rows="4"></textarea>
+            </div>
+
+            <div class="booking-summary">
+                <h3>Booking Summary</h3>
+                <p>Hourly Rate: £<span id="summaryRate">15</span>/hour</p>
+                <p class="total-price">Total: £0</p>
+                <p style="color: #6b7280; font-size: 12px; margin-top: 15px;">
+                    Cancellation charges may apply if you cancel within 24 hours.
+                    <a href="terms-conditions.html" style="color: var(--primary); text-decoration: none;">View policy</a>
+                </p>
+            </div>
+
+            <button class="btn-large" onclick="saveBooking()" style="width: 100%; padding: 16px; font-size: 16px;">Confirm Booking</button>
+            
+            <p style="text-align: center; color: var(--text-secondary); margin-top: 20px; font-size: 12px;">
+                By booking, you agree to our <a href="terms-conditions.html" style="color: var(--primary); text-decoration: none;">Terms and Conditions</a>, including our cancellation policy
+            </p>
+        </div>
+    </div>
+
+    <!-- Cancellation Warning Modal -->
+    <div id="cancellationModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 style="color: #d1565b; margin-bottom: 20px;">Warning: Cancellation Policy</h2>
+            
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <p style="color: #856404; margin: 0; font-weight: 600;">You will lose money if you cancel within 24 hours!</p>
+            </div>
+
+            <div style="background: #f5f3f0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #1f3a5f; margin-top: 0;">Cancellation Fees:</h4>
+                <ul style="margin: 10px 0; color: #6b7280; font-size: 14px;">
+                    <li style="margin-bottom: 8px;">More than 24 hours before: <strong style="color: #6bb69f;">Free</strong></li>
+                    <li style="margin-bottom: 8px;">Within 24 hours: <strong style="color: #d1565b;">50% charge (£<span id="modalFee50">0</span>)</strong></li>
+                    <li>Less than 4 hours: <strong style="color: #d1565b;">100% charge (£<span id="modalFee100">0</span>)</strong></li>
+                </ul>
+            </div>
+
+            <p style="color: #6b7280; font-size: 13px; margin: 15px 0;">This booking will cost <strong style="color: #1f3a5f; font-size: 16px;">£<span id="modalTotalPrice">0</span></strong>. If you cancel, you may be charged based on when you cancel.</p>
+
+            <div style="display: flex; gap: 12px; margin-top: 25px;">
+                <button onclick="proceedWithBooking()" class="btn-large" style="flex: 1;">I Understand, Proceed</button>
+                <button onclick="closeCancellationModal()" class="btn-large" style="flex: 1; background-color: #6b7280;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBookingInfo();
+
+            // Set up price calculation listeners
+            document.getElementById('startTime').addEventListener('change', calculatePrice);
+            document.getElementById('endTime').addEventListener('change', calculatePrice);
+
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('bookingDate').min = today;
+        });
+    </script>
+</body>
+</html>

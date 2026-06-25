@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Moderation - CarePro Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .moderation-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--neutral-border);
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid var(--neutral-border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-suspended {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-banned {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-activate {
+            background: #10b981;
+            color: white;
+        }
+        .btn-suspend {
+            background: #f59e0b;
+            color: white;
+        }
+        .btn-ban {
+            background: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro Admin</h1>
+        <div>
+            <a href="admin.html" class="btn-large">Dashboard</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="moderation-container">
+        <h2 style="margin-bottom: 25px;">User Moderation</h2>
+
+        <!-- Stats -->
+        <div class="stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px;">
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--neutral-border); text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 5px;" id="totalUsers">0</div>
+                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Total Users</div>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--neutral-border); text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 5px;" id="activeUsers">0</div>
+                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Active</div>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--neutral-border); text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 5px;" id="suspendedUsers">0</div>
+                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Suspended</div>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--neutral-border); text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 5px;" id="bannedUsers">0</div>
+                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Banned</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filter-group">
+                <label>Search by Name</label>
+                <input type="text" id="searchName" placeholder="Name..." onkeyup="filterUsers()">
+            </div>
+            <div class="filter-group">
+                <label>Role</label>
+                <select id="filterRole" onchange="filterUsers()">
+                    <option value="">All Roles</option>
+                    <option value="parent">Parent</option>
+                    <option value="babysitter">Babysitter</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="filterStatus" onchange="filterUsers()">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="banned">Banned</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button class="btn-large" onclick="loadUsers()" style="background: var(--primary);">Refresh</button>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div style="background: white; border-radius: 8px; border: 1px solid var(--neutral-border); overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">ID</th>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">Name</th>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">Email</th>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">Role</th>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">Status</th>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">Joined</th>
+                        <th style="background: var(--neutral-light); padding: 15px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--neutral-border); color: var(--text-secondary);">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading users...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let allUsers = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('Admin access only');
+                window.location.href = 'login.html';
+                return;
+            }
+            loadUsers();
+        });
+
+        async function loadUsers() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    alert('Error loading users: ' + error.message);
+                    return;
+                }
+
+                allUsers = data || [];
+                updateStats();
+                renderTable(allUsers);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function updateStats() {
+            const total = allUsers.length;
+            const active = allUsers.filter(u => u.status === 'active' || !u.status).length;
+            const suspended = allUsers.filter(u => u.status === 'suspended').length;
+            const banned = allUsers.filter(u => u.status === 'banned').length;
+
+            document.getElementById('totalUsers').textContent = total;
+            document.getElementById('activeUsers').textContent = active;
+            document.getElementById('suspendedUsers').textContent = suspended;
+            document.getElementById('bannedUsers').textContent = banned;
+        }
+
+        function filterUsers() {
+            const searchName = document.getElementById('searchName').value.toLowerCase();
+            const filterRole = document.getElementById('filterRole').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+
+            let filtered = allUsers.filter(user => {
+                const matchesName = user.name.toLowerCase().includes(searchName);
+                const matchesRole = !filterRole || user.role === filterRole;
+                const matchesStatus = !filterStatus || (user.status === filterStatus);
+                return matchesName && matchesRole && matchesStatus;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(users) {
+            const tbody = document.getElementById('tableBody');
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px;">${user.id}</td>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px;"><strong>${user.name}</strong></td>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px;">${user.email}</td>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px;">${user.role}</td>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px;">
+                        <span class="status-badge status-${user.status || 'active'}">
+                            ${(user.status || 'active').charAt(0).toUpperCase() + (user.status || 'active').slice(1)}
+                        </span>
+                    </td>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px;">${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-size: 14px; display: flex; gap: 8px;">
+                        ${(user.status !== 'active' && user.status !== undefined) ? 
+                            `<button class="btn-small btn-activate" onclick="changeStatus(${user.id}, 'active')">Activate</button>` 
+                            : ''}
+                        ${user.status !== 'suspended' ? 
+                            `<button class="btn-small btn-suspend" onclick="changeStatus(${user.id}, 'suspended')">Suspend</button>` 
+                            : ''}
+                        ${user.status !== 'banned' ? 
+                            `<button class="btn-small btn-ban" onclick="changeStatus(${user.id}, 'banned')">Ban</button>` 
+                            : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function changeStatus(userId, newStatus) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!confirm(`Change ${user.name}'s status to ${newStatus}?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update({ status: newStatus })
+                    .eq('id', userId);
+
+                if (error) {
+                    alert('Error: ' + error.message);
+                    return;
+                }
+
+                alert(`✓ ${user.name} is now ${newStatus}`);
+                loadUsers();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>    

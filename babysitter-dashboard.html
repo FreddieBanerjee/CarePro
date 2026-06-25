@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babysitter Dashboard - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="parent-search.html" class="btn-large">Browse Babysitters</a>
+            <a href="availability.html" class="btn-large">📅 Availability</a>
+            <a href="user-profile.html" class="btn-large">My Profile</a>
+            <a href="messaging.html" class="btn-large">Messages</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Your Dashboard</h2>
+        
+        <div style="background: linear-gradient(135deg, #1f3a5f 0%, #2d5080 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                <div><p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.8;">Total Earnings</p><p style="margin: 0; font-size: 24px; font-weight: 700;">£<span id="totalEarnings">0</span></p></div>
+                <div><p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.8;">Confirmed Bookings</p><p style="margin: 0; font-size: 24px; font-weight: 700;"><span id="confirmedBookings">0</span></p></div>
+                <div><p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.8;">Average Rating</p><p style="margin: 0; font-size: 24px; font-weight: 700;"><span id="avgRating">--</span>★</p></div>
+                <div><p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.8;">Member Since</p><p style="margin: 0; font-size: 13px;" id="memberDate">Joined</p></div>
+            </div>
+        </div>
+        
+        <div class="babysitter-dashboard">
+            <div class="dashboard-card">
+                <h3>Your Profile</h3>
+                <div class="profile-summary">
+                    <p><strong>Name:</strong> <span id="bsName">Loading...</span></p>
+                    <p><strong>Location:</strong> <span id="bsLocation">--</span></p>
+                    <p><strong>Hourly Rate:</strong> £<span id="bsRate">--</span>/hour</p>
+                </div>
+                <button class="btn-small" onclick="window.location.href='user-profile.html'" style="width: 100%; margin-top: 12px;">Edit Profile</button>
+            </div>
+
+            <div class="dashboard-card">
+                <h3>Upcoming Bookings</h3>
+                <div id="upcomingBookings">
+                    <p style="color: var(--text-secondary); font-size: 14px;">Loading bookings...</p>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h3>Messages</h3>
+                <div id="recentMessages">
+                    <p style="color: var(--text-secondary); font-size: 14px;">Loading messages...</p>
+                </div>
+                <a href="messaging.html" class="btn-small" style="display: block; text-align: center; margin-top: 12px;">View All Messages</a>
+            </div>
+
+            <div class="dashboard-card">
+                <h3>Completed Bookings</h3>
+                <div id="completedBookings">
+                    <p style="color: var(--text-secondary); font-size: 14px;">No completed bookings</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('Please login');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (currentUser.role !== 'babysitter') {
+                alert('This page is for babysitters only');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Load profile info
+            document.getElementById('bsName').textContent = currentUser.name;
+            document.getElementById('bsLocation').textContent = currentUser.location || 'Not specified';
+            document.getElementById('bsRate').textContent = currentUser.hourly_rate || '--';
+
+            if (currentUser.created_at) {
+                const date = new Date(currentUser.created_at);
+                document.getElementById('memberDate').textContent = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+            }
+
+            // Load bookings
+            await loadBabysitterBookings(currentUser.id);
+
+            // Load rating
+            await loadBabysitterRating(currentUser.id);
+
+            // Load recent messages
+            await loadRecentMessages(currentUser.id);
+        });
+
+        async function loadBabysitterBookings(babysitterId) {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Load upcoming bookings
+                const { data: upcoming } = await supabaseClient
+                    .from('bookings')
+                    .select('*, users:parent_id(name, email)')
+                    .eq('babysitter_id', babysitterId)
+                    .gte('booking_date', today)
+                    .order('booking_date', { ascending: true })
+                    .limit(5);
+
+                const upcomingEl = document.getElementById('upcomingBookings');
+                if (!upcoming || upcoming.length === 0) {
+                    upcomingEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 14px;">No upcoming bookings</p>';
+                } else {
+                    upcomingEl.innerHTML = upcoming.map(booking => `
+                        <div style="padding: 12px 0; border-bottom: 1px solid var(--neutral-border);">
+                            <p style="margin: 0; font-weight: 600;">${booking.users?.name || 'Parent'}</p>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-secondary);">${booking.booking_date} • ${booking.start_time}-${booking.end_time}</p>
+                            <p style="margin: 5px 0 0 0; color: var(--primary); font-weight: 600;">£${booking.total_price}</p>
+                        </div>
+                    `).join('');
+                }
+
+                // Calculate total earnings
+                const totalEarnings = (upcoming || []).reduce((sum, b) => sum + b.total_price, 0);
+                document.getElementById('totalEarnings').textContent = totalEarnings.toFixed(2);
+                document.getElementById('confirmedBookings').textContent = upcoming?.length || 0;
+
+                // Load completed bookings
+                const { data: completed } = await supabaseClient
+                    .from('bookings')
+                    .select('*, users:parent_id(name, id)')
+                    .eq('babysitter_id', babysitterId)
+                    .lt('booking_date', today)
+                    .order('booking_date', { ascending: false })
+                    .limit(3);
+
+                const completedEl = document.getElementById('completedBookings');
+                if (!completed || completed.length === 0) {
+                    completedEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 14px;">No completed bookings</p>';
+                } else {
+                    completedEl.innerHTML = completed.map(booking => `
+                        <div style="padding: 12px 0; border-bottom: 1px solid var(--neutral-border);">
+                            <p style="margin: 0; font-weight: 600;">${booking.users?.name || 'Parent'}</p>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-secondary);">${booking.booking_date}</p>
+                            <a href="parent-review.html?parentId=${booking.users?.id}&bookingId=${booking.id}" style="color: var(--primary); text-decoration: none; font-size: 12px;">Leave a review →</a>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                document.getElementById('upcomingBookings').innerHTML = '<p style="color: red;">Error loading bookings</p>';
+            }
+        }
+
+        async function loadRecentMessages(babysitterId) {
+            try {
+                const { data } = await supabaseClient
+                    .from('messages')
+                    .select('*')
+                    .eq('recipient_id', babysitterId)
+                    .order('created_at', { ascending: false })
+                    .limit(3);
+
+                const messagesEl = document.getElementById('recentMessages');
+                if (!data || data.length === 0) {
+                    messagesEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 14px;">No new messages</p>';
+                } else {
+                    messagesEl.innerHTML = data.map(msg => `
+                        <div style="padding: 12px 0; border-bottom: 1px solid var(--neutral-border);">
+                            <p style="margin: 0; font-weight: 600;">${msg.sender_name}</p>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-secondary);">${msg.message_text.substring(0, 40)}...</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        async function loadBabysitterRating(babysitterId) {
+            try {
+                const { data } = await supabaseClient
+                    .from('reviews')
+                    .select('rating')
+                    .eq('babysitter_id', babysitterId);
+
+                if (data && data.length > 0) {
+                    const average = (data.reduce((sum, r) => sum + r.rating, 0) / data.length).toFixed(1);
+                    document.getElementById('avgRating').textContent = average;
+                }
+            } catch (error) {
+                console.error('Error loading rating:', error);
+            }
+        }
+    </script>
+</body>
+</html>

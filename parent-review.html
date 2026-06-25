@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Parent - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <a href="babysitter-dashboard.html" class="back-link">Back</a>
+    </nav>
+
+    <div class="container" style="max-width: 600px;">
+        <h2>Rate Your Experience</h2>
+        <p style="color: var(--text-secondary); text-align: center; margin-bottom: 30px;">Help other babysitters by sharing your experience with this parent</p>
+        
+        <div style="background: var(--neutral-light); padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 3px solid var(--primary);">
+            <p style="color: var(--text-secondary); margin: 0 0 5px 0;">Booking:</p>
+            <p style="font-weight: 600; margin: 0;" id="bookingInfo">Loading booking details...</p>
+        </div>
+
+        <div class="review-form">
+            <div class="form-group">
+                <label>Rating:</label>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+                    <button type="button" class="star-btn" data-rating="1" style="padding: 15px; font-size: 20px; border: 2px solid var(--neutral-border); border-radius: 4px; background: white; cursor: pointer;">★</button>
+                    <button type="button" class="star-btn" data-rating="2" style="padding: 15px; font-size: 20px; border: 2px solid var(--neutral-border); border-radius: 4px; background: white; cursor: pointer;">★★</button>
+                    <button type="button" class="star-btn" data-rating="3" style="padding: 15px; font-size: 20px; border: 2px solid var(--neutral-border); border-radius: 4px; background: white; cursor: pointer;">★★★</button>
+                    <button type="button" class="star-btn" data-rating="4" style="padding: 15px; font-size: 20px; border: 2px solid var(--neutral-border); border-radius: 4px; background: white; cursor: pointer;">★★★★</button>
+                    <button type="button" class="star-btn" data-rating="5" style="padding: 15px; font-size: 20px; border: 2px solid var(--neutral-border); border-radius: 4px; background: white; cursor: pointer;">★★★★★</button>
+                </div>
+                <input type="hidden" id="parentReviewRating" value="5">
+            </div>
+
+            <div class="form-group">
+                <label>Your Review:</label>
+                <textarea id="parentReviewText" placeholder="How was your experience? Were they punctual, responsible, and good with the children?" rows="5" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Would you recommend this parent to other babysitters?</label>
+                <select id="recommendParent" required>
+                    <option value="">Select...</option>
+                    <option value="yes">Yes, definitely</option>
+                    <option value="maybe">Maybe</option>
+                    <option value="no">No</option>
+                </select>
+            </div>
+
+            <button class="btn-large" onclick="submitParentReview()" style="width: 100%; padding: 16px; margin-top: 20px;">Submit Review</button>
+        </div>
+
+        <p style="text-align: center; color: var(--text-secondary); margin-top: 30px; font-size: 13px;">
+            Your review helps maintain a trustworthy community. All reviews are moderated before being published.
+        </p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let parentId = null;
+        let bookingId = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const params = new URLSearchParams(window.location.search);
+            parentId = params.get('parentId');
+            bookingId = params.get('bookingId');
+
+            if (!parentId || !bookingId) {
+                alert('Invalid request');
+                window.location.href = 'babysitter-dashboard.html';
+                return;
+            }
+
+            // Load booking info
+            try {
+                const { data } = await supabaseClient
+                    .from('bookings')
+                    .select('*, users:parent_id(name)')
+                    .eq('id', bookingId)
+                    .single();
+
+                if (data) {
+                    document.getElementById('bookingInfo').textContent = `${data.users?.name || 'Parent'} - ${data.booking_date} (£${data.total_price})`;
+                }
+            } catch (error) {
+                console.error('Error loading booking:', error);
+            }
+
+            // Set up star rating buttons
+            document.querySelectorAll('.star-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.star-btn').forEach(b => {
+                        b.style.background = 'white';
+                        b.style.borderColor = 'var(--neutral-border)';
+                    });
+                    this.style.background = 'var(--primary)';
+                    this.style.color = 'white';
+                    this.style.borderColor = 'var(--primary)';
+                    document.getElementById('parentReviewRating').value = this.dataset.rating;
+                });
+            });
+
+            // Select default 5 stars
+            document.querySelector('[data-rating="5"]').click();
+        });
+
+        async function submitParentReview() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const rating = parseInt(document.getElementById('parentReviewRating').value);
+            const reviewText = document.getElementById('parentReviewText').value;
+            const recommendParent = document.getElementById('recommendParent').value;
+
+            if (!reviewText || !recommendParent) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (!currentUser || currentUser.role !== 'babysitter') {
+                alert('Only babysitters can review parents');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('parent_reviews')
+                    .insert([
+                        {
+                            parent_id: parentId,
+                            booking_id: bookingId,
+                            reviewer_id: currentUser.id,
+                            reviewer_name: currentUser.name,
+                            rating: rating,
+                            review_text: reviewText,
+                            would_recommend: recommendParent === 'yes',
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+
+                if (error) {
+                    alert('Error: ' + error.message);
+                    return;
+                }
+
+                alert('Review submitted! Thank you for helping our community.');
+                window.location.href = 'babysitter-dashboard.html';
+            } catch (error) {
+                alert('Error submitting review: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Availability - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .week-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+            gap: 8px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--neutral-border);
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        .time-label {
+            font-weight: 600;
+            font-size: 12px;
+            padding: 10px 5px;
+            text-align: center;
+        }
+        .day-header {
+            font-weight: 600;
+            text-align: center;
+            padding: 10px 5px;
+            border-bottom: 2px solid var(--primary);
+        }
+        .hour-slot {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--neutral-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .hour-slot.available {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        .hour-slot.unavailable {
+            background: #f3f4f6;
+            color: var(--text-secondary);
+            border-color: var(--neutral-border);
+        }
+        .hour-slot:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="parent-search.html" class="btn-large">Browse Babysitters</a>
+            <a href="babysitter-dashboard.html" class="btn-large">My Dashboard</a>
+            <a href="user-profile.html" class="btn-large">My Profile</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Set Your Availability</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 10px;">Click each hour to toggle availability. This week shows the next 7 days.</p>
+        <p style="background: #fef3c7; padding: 12px; border-radius: 6px; border-left: 4px solid #f59e0b; margin-bottom: 30px; color: #92400e;">
+            ℹ️ <strong>Tip:</strong> Green hours = available. Gray hours = unavailable. Parents can message you if they need different times.
+        </p>
+
+        <div class="week-grid" id="weekGrid"></div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--neutral-border);">
+            <h3 style="margin-top: 0;">Your Summary</h3>
+            <p id="summaryText" style="color: var(--text-secondary); margin: 0;">Loading...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script src="enhanced-features.js"></script>
+    <script>
+        const HOURS = Array.from({length: 16}, (_, i) => i + 8); // 8am to 11pm
+        const DAYS = 7;
+        let currentAvailability = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('Please login');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (currentUser.role !== 'babysitter') {
+                alert('Only babysitters can set availability');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            loadWeekAvailability();
+        });
+
+        async function loadWeekAvailability() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const today = new Date();
+            const dates = [];
+
+            // Get next 7 days
+            for (let i = 0; i < DAYS; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]);
+            }
+
+            try {
+                // Load existing availability
+                const { data, error } = await supabaseClient
+                    .from('availability')
+                    .select('*')
+                    .eq('babysitter_id', currentUser.id)
+                    .in('available_date', dates);
+
+                if (error) {
+                    console.error('Error loading availability:', error);
+                    return;
+                }
+
+                // Build availability map
+                currentAvailability = {};
+                if (data) {
+                    data.forEach(slot => {
+                        const key = `${slot.available_date}-${slot.hour_start}`;
+                        currentAvailability[key] = slot.is_available;
+                    });
+                }
+
+                renderWeekGrid(dates);
+            } catch (error) {
+                console.error('Exception:', error);
+            }
+        }
+
+        function renderWeekGrid(dates) {
+            const grid = document.getElementById('weekGrid');
+            grid.innerHTML = '';
+
+            // Time labels column
+            grid.appendChild(createEl('div', 'time-label', ''));
+            dates.forEach(date => {
+                const d = new Date(date);
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNum = d.getDate();
+                grid.appendChild(createEl('div', 'day-header', `${dayName} ${dayNum}`));
+            });
+
+            // Hour rows
+            HOURS.forEach(hour => {
+                grid.appendChild(createEl('div', 'time-label', `${String(hour).padStart(2, '0')}:00`));
+
+                dates.forEach(date => {
+                    const key = `${date}-${hour}`;
+                    const isAvailable = currentAvailability[key] ?? false;
+                    
+                    const slot = document.createElement('div');
+                    slot.className = `hour-slot ${isAvailable ? 'available' : 'unavailable'}`;
+                    slot.textContent = isAvailable ? '✓' : '';
+                    slot.onclick = () => toggleAvailability(date, hour, slot);
+                    
+                    grid.appendChild(slot);
+                });
+            });
+
+            updateSummary();
+        }
+
+        async function toggleAvailability(date, hour, element) {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const key = `${date}-${hour}`;
+            const isCurrentlyAvailable = currentAvailability[key] ?? false;
+            const willBeAvailable = !isCurrentlyAvailable;
+
+            try {
+                // Check if record exists
+                const { data: existing } = await supabaseClient
+                    .from('availability')
+                    .select('id')
+                    .eq('babysitter_id', currentUser.id)
+                    .eq('available_date', date)
+                    .eq('hour_start', hour)
+                    .single();
+
+                if (existing) {
+                    // Update existing
+                    const { error } = await supabaseClient
+                        .from('availability')
+                        .update({ is_available: willBeAvailable })
+                        .eq('id', existing.id);
+
+                    if (error) {
+                        alert('Error: ' + error.message);
+                        return;
+                    }
+                } else {
+                    // Create new
+                    const { error } = await supabaseClient
+                        .from('availability')
+                        .insert([{
+                            babysitter_id: currentUser.id,
+                            babysitter_name: currentUser.name,
+                            available_date: date,
+                            hour_start: hour,
+                            is_available: willBeAvailable,
+                            is_booked: false
+                        }]);
+
+                    if (error) {
+                        alert('Error: ' + error.message);
+                        return;
+                    }
+                }
+
+                // Update UI
+                currentAvailability[key] = willBeAvailable;
+                element.classList.toggle('available', willBeAvailable);
+                element.classList.toggle('unavailable', !willBeAvailable);
+                element.textContent = willBeAvailable ? '✓' : '';
+                
+                updateSummary();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function updateSummary() {
+            const availableCount = Object.values(currentAvailability).filter(v => v).length;
+            const totalSlots = HOURS.length * DAYS;
+            const percentage = Math.round((availableCount / totalSlots) * 100);
+
+            document.getElementById('summaryText').innerHTML = `
+                <strong>${availableCount} hours available</strong> out of ${totalSlots} total hours this week (${percentage}%)
+            `;
+        }
+
+        function createEl(tag, className, text) {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            if (text) el.textContent = text;
+            return el;
+        }
+    </script>
+</body>
+</html>

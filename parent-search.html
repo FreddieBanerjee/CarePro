@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find a Babysitter - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="dashboard.html" class="btn-large">My Bookings</a>
+            <a href="favorites.html" class="btn-large">⭐ Favorites</a>
+            <a href="user-profile.html" class="btn-large">My Profile</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Find a Babysitter</h2>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search by name or location">
+            <button class="btn-large" onclick="searchBabysitters()">Search</button>
+            <select id="rateFilter" onchange="searchBabysitters()" style="padding: 12px; border: 1px solid var(--neutral-border); border-radius: 4px; margin-left: 10px;">
+                <option value="">All Rates</option>
+                <option value="budget">£10-15/hr</option>
+                <option value="standard">£15-20/hr</option>
+                <option value="premium">£20+/hr</option>
+            </select>
+        </div>
+
+        <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="sortBy('rating')" class="btn-small" style="background: var(--secondary);">★ Top Rated</button>
+            <button onclick="sortBy('price')" class="btn-small" style="background: var(--secondary);">Low Price</button>
+            <button onclick="sortBy('reviews')" class="btn-small" style="background: var(--secondary);">Most Reviews</button>
+        </div>
+
+        <div class="babysitters-list">
+            <p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Loading babysitters...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script src="enhanced-features.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('Please login to browse babysitters');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Only allow parents to browse
+            if (currentUser.role !== 'parent') {
+                alert('Only parents can browse babysitters');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            searchBabysitters();
+        });
+    </script>
+</body>
+</html>

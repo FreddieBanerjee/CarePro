@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="dashboard.html" class="btn-large">My Bookings</a>
+            <a href="user-profile.html" class="btn-large">My Profile</a>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 1200px;">
+        <h2>Messages</h2>
+        
+        <div class="messages-container" style="display: grid; grid-template-columns: 300px 1fr; gap: 20px; height: 600px; margin-top: 20px;">
+            <div class="conversations-list" style="background: white; border-radius: 8px; border: 1px solid var(--neutral-border); overflow-y: auto;">
+                <div style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-weight: 600;">Conversations</div>
+                <div id="conversationsList" style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading conversations...</div>
+            </div>
+
+            <div class="message-thread" style="background: white; border-radius: 8px; border: 1px solid var(--neutral-border); display: flex; flex-direction: column;">
+                <div id="messageHeader" class="message-header" style="padding: 15px; border-bottom: 1px solid var(--neutral-border); font-weight: 600;">
+                    <h3 style="margin: 0;">Select a conversation</h3>
+                </div>
+                
+                <div id="messagesBox" class="messages-box" style="flex: 1; padding: 15px; overflow-y: auto; background: #fafafa;"></div>
+
+                <div class="message-input-section" style="padding: 15px; border-top: 1px solid var(--neutral-border); display: flex; gap: 10px;">
+                    <input type="text" id="messageInput" placeholder="Type your message..." disabled style="flex: 1; padding: 12px; border: 1px solid var(--neutral-border); border-radius: 4px; font-size: 14px;">
+                    <button id="sendButton" class="btn-large" onclick="sendMessage()" disabled style="padding: 12px 24px;">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                alert('Please login to access messages');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            loadConversations();
+
+            // Check if opening with a specific recipient
+            const params = new URLSearchParams(window.location.search);
+            const recipientId = params.get('recipientId');
+            if (recipientId) {
+                loadRecipientAndMessages(recipientId);
+            }
+        });
+
+        async function loadRecipientAndMessages(recipientId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('name')
+                    .eq('id', recipientId)
+                    .single();
+
+                if (error || !data) {
+                    console.error('Error loading recipient:', error);
+                    return;
+                }
+
+                setTimeout(() => {
+                    loadMessagesWithUser(recipientId, data.name);
+                }, 500);
+            } catch (error) {
+                console.error('Exception:', error);
+            }
+        }
+
+        // Auto-refresh conversations every 2 seconds
+        setInterval(loadConversations, 2000);
+    </script>
+</body>
+</html>
