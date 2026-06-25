@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babysitters Map - CarePro</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>CarePro</h1>
+        <div>
+            <a href="index.html" class="btn-large">Home</a>
+            <button class="logout-btn" onclick="goToDashboard()">My Dashboard</button>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 100%; padding: 0;">
+        <div id="map" style="width: 100%; height: 90vh; border-radius: 0;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let map;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize map centered on UK
+            map = L.map('map').setView([51.5074, -0.1278], 6);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Load babysitters
+            loadBabysittersOnMap();
+        });
+
+        async function loadBabysittersOnMap() {
+            try {
+                const { data: babysitters, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('role', 'babysitter');
+                
+                if (error) throw error;
+                
+                babysitters.forEach(sitter => {
+                    if (sitter.latitude && sitter.longitude) {
+                        const marker = L.marker([sitter.latitude, sitter.longitude]).addTo(map);
+                        marker.bindPopup(`
+                            <div style="width: 200px;">
+                                <h3 style="margin: 0 0 8px 0;">${sitter.name}</h3>
+                                <p style="margin: 0 0 8px 0; font-size: 14px;">£${sitter.hourly_rate}/hour</p>
+                                <button onclick="window.location.href='babysitter-profile.html?id=${sitter.id}'" style="width: 100%; padding: 8px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer;">View Profile</button>
+                            </div>
+                        `);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading babysitters:', error);
+            }
+        }
+    </script>
+</body>
+</html>
