@@ -89,7 +89,7 @@ async function handleGoogleOAuthCallback() {
     try {
         // Exchange code for tokens via backend
         const userId = localStorage.getItem('googleAuthUserId');
-            const response = await fetch('/api/google-calendar-auth', {
+        const response = await fetch('/api/google-calendar-auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -341,8 +341,18 @@ async function syncGoogleCalendarToAvailability() {
                 } else {
                     // Create new slot
                     const { error: insertError } = await supabaseClient
-                        .from('availability')
-                        .insert([slot]);
+  .from('availability')
+  .insert([{
+    babysitter_id: currentUser.id,
+    babysitter_name: currentUser.name,
+    available_date: slot.available_date,
+    hour_start: slot.hour_start,
+    is_available: slot.is_available,
+    synced_from_google_calendar: true,
+    google_event_id: slot.google_event_id,
+    google_event_title: slot.google_event_title,
+    updated_at: new Date().toISOString()
+  }]);
 
                     if (insertError) throw insertError;
                 }
